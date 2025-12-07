@@ -1,56 +1,61 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const Likes = require("../models/likes.model");
+const Like = require('../models/likes.model');
 
-// ✅ Like a module
-router.post("/like", async (req, res) => {
-  const { userId, moduleId } = req.body;
-
+// Like a module
+router.post('/like', async (req, res) => {
   try {
+    const { userId, moduleId } = req.body;
+    if (!userId || !moduleId) return res.status(400).json({ error: "Missing userId or moduleId" });
+
     // Prevent duplicate likes
-    const existing = await Likes.findOne({ userId, moduleId });
-    if (existing) return res.status(400).json({ message: "Already liked" });
+    const existing = await Like.findOne({ userId, moduleId });
+    if (existing) return res.status(400).json({ error: "Already liked" });
 
-    const like = await Likes.create({ userId, moduleId });
-    res.status(200).json({ message: "Liked", like });
+    const like = new Like({ userId, moduleId });
+    await like.save();
+    return res.status(200).json({ message: "Liked successfully" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
-// ✅ Unlike a module
-router.post("/unlike", async (req, res) => {
-  const { userId, moduleId } = req.body;
-
+// Unlike a module
+router.post('/unlike', async (req, res) => {
   try {
-    await Likes.findOneAndDelete({ userId, moduleId });
-    res.status(200).json({ message: "Unliked" });
+    const { userId, moduleId } = req.body;
+    if (!userId || !moduleId) return res.status(400).json({ error: "Missing userId or moduleId" });
+
+    await Like.deleteOne({ userId, moduleId });
+    return res.status(200).json({ message: "Unliked successfully" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
-// ✅ Check if a user liked a module
-router.get("/check/:userId/:moduleId", async (req, res) => {
-  const { userId, moduleId } = req.params;
-
+// Get total likes for a module
+router.get('/count/:moduleId', async (req, res) => {
   try {
-    const liked = await Likes.exists({ userId, moduleId });
-    res.status(200).json({ liked: !!liked });
+    const { moduleId } = req.params;
+    const count = await Like.countDocuments({ moduleId });
+    return res.status(200).json({ likes: count });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
-// ✅ Count total likes for a module
-router.get("/count/:moduleId", async (req, res) => {
-  const { moduleId } = req.params;
-
+// Check if a user liked a module
+router.get('/check/:userId/:moduleId', async (req, res) => {
   try {
-    const count = await Likes.countDocuments({ moduleId });
-    res.status(200).json({ likes: count });
+    const { userId, moduleId } = req.params;
+    const liked = await Like.exists({ userId, moduleId });
+    return res.status(200).json({ liked: !!liked });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
